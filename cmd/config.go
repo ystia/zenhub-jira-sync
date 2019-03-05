@@ -16,9 +16,15 @@ type Config struct {
 
 // Synchronization allows to link specific github repository to a Jira Board
 type Synchronization struct {
-	GithubOwner      string `mapstructure:"github_owner"`
-	GithubRepository string `mapstructure:"github_repository"`
-	JiraBoardID      int    `mapstructure:"jira_board_id"`
+	GithubOwner      string         `mapstructure:"github_owner"`
+	GithubRepository string         `mapstructure:"github_repository"`
+	JiraBoardID      int            `mapstructure:"jira_board_id"`
+	ReleaseRenamer   ReleaseRenamer `mapstructure:"release_renamer"`
+}
+
+type ReleaseRenamer struct {
+	Source string
+	Target string
 }
 
 // JiraAuthentication defines how to connect to Jira

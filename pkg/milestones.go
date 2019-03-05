@@ -53,18 +53,10 @@ func (s *Sync) milestones(ctx context.Context) error {
 		return err
 	}
 
-	for _, m := range ghMilestones {
-		log.Printf("Found GitHub milestone %q, state %q", *m.Title, *m.State)
-	}
-
 	log.Print("Listing Spints")
 	jiraSprints, err := s.JiraClient.ListSprints(ctx)
 	if err != nil {
 		return err
-	}
-
-	for _, s := range jiraSprints {
-		log.Printf("Found Jira sprint %q, state %q", s.Name, s.State)
 	}
 
 	log.Print("Comparing milestones and sprints")

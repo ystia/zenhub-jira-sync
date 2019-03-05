@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 
 	jiralib "github.com/andygrunwald/go-jira"
 	gh "github.com/google/go-github/v24/github"
@@ -32,7 +33,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		for _, s := range cfg.Synchronizations {
-			err := syncRepository(cfg, s.GithubOwner, s.GithubRepository, s.JiraBoardID)
+			err := syncRepository(cfg, s.GithubOwner, s.GithubRepository, s.JiraBoardID, s.ReleaseRenamer)
 			if err != nil {
 				return err
 			}
@@ -94,7 +95,7 @@ func createJiraCLient(cfg *Config) (*jiralib.Client, error) {
 	return jiraClient, errors.Wrapf(err, "failed to create jira client")
 }
 
-func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoardID int) error {
+func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoardID int, releaseRenamer ReleaseRenamer) error {
 	ctx := context.Background()
 	jiraClient, err := createJiraCLient(cfg)
 	if err != nil {
@@ -110,6 +111,7 @@ func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoard
 		JiraClient: &jira.Client{
 			JiraClient: jiraClient,
 			BoardID:    jiraBoardID,
+			ProjectID:  cfg.JiraProject,
 		},
 	}
 
@@ -118,6 +120,19 @@ func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoard
 		return err
 	}
 	sync.ZenhubClient = zenhub.NewClient(cfg.ZenhubAPIToken, *ghRepo.ID)
+
+	if releaseRenamer.Source == "" {
+		releaseRenamer.Source = "^(.*)$"
+	}
+
+	if releaseRenamer.Target == "" {
+		releaseRenamer.Target = "${0}"
+	}
+	sync.ReleaseNameRE, err = regexp.Compile(releaseRenamer.Source)
+	if err != nil {
+		return errors.Wrapf(err, "failed to compile release regexp for repository %s/%s", githubOwner, githubRepository)
+	}
+	sync.VersionNameRename = releaseRenamer.Target
 
 	return sync.All(ctx)
 }

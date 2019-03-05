@@ -22,6 +22,8 @@ type API interface {
 	GetMilestoneStartDate(milestoneNumber int) (*time.Time, error)
 	// DecorateGHMilestone transforms a GitHub Milestone into a ZenHub Milestone.
 	DecorateGHMilestone(ghMilestone *github.Milestone) (*Milestone, error)
+	// GetReleasesReports returns releases reports for the associated repository.
+	GetReleasesReports() ([]*ReleaseReport, error)
 }
 
 // Client manages communication with the ZenHub API.
