@@ -8,23 +8,30 @@ import (
 type Config struct {
 	Synchronizations   []Synchronization  `mapstructure:"synchronizations"`
 	JiraURI            string             `mapstructure:"jira_uri"`
-	JiraProject        string             `mapstructure:"jira_project"`
+	JiraProjectKey     string             `mapstructure:"jira_project_key"`
 	JiraAuthentication JiraAuthentication `mapstructure:"jira_authentication"`
 	ZenhubAPIToken     string             `mapstructure:"zenhub_api_token"`
 	GithubAPIToken     string             `mapstructure:"github_api_token"`
+	IssueLabelToType   *IssueLabelToType  `mapstructure:"issues_label_to_type"`
 }
 
 // Synchronization allows to link specific github repository to a Jira Board
 type Synchronization struct {
-	GithubOwner      string         `mapstructure:"github_owner"`
-	GithubRepository string         `mapstructure:"github_repository"`
-	JiraBoardID      int            `mapstructure:"jira_board_id"`
-	ReleaseRenamer   ReleaseRenamer `mapstructure:"release_renamer"`
+	GithubOwner      string            `mapstructure:"github_owner"`
+	GithubRepository string            `mapstructure:"github_repository"`
+	JiraBoardID      int               `mapstructure:"jira_board_id"`
+	ReleaseRenamer   ReleaseRenamer    `mapstructure:"release_renamer"`
+	IssueLabelToType *IssueLabelToType `mapstructure:"issues_label_to_type"`
 }
 
 type ReleaseRenamer struct {
 	Source string
 	Target string
+}
+
+type IssueLabelToType struct {
+	Default       string              `mapstructure:"default"`
+	LabelsMapping []map[string]string `mapstructure:"labels_mapping"`
 }
 
 // JiraAuthentication defines how to connect to Jira
@@ -37,8 +44,8 @@ func validateConfig(cfg *Config) error {
 	if cfg.JiraURI == "" {
 		return errors.New("missing jira_uri parameter")
 	}
-	if cfg.JiraProject == "" {
-		return errors.New("missing jira_project parameter")
+	if cfg.JiraProjectKey == "" {
+		return errors.New("missing jira_project_key parameter")
 	}
 	if cfg.ZenhubAPIToken == "" {
 		return errors.New("missing zenhub_api_token parameter")

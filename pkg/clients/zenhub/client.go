@@ -24,6 +24,17 @@ type API interface {
 	DecorateGHMilestone(ghMilestone *github.Milestone) (*Milestone, error)
 	// GetReleasesReports returns releases reports for the associated repository.
 	GetReleasesReports() ([]*ReleaseReport, error)
+	// GetBoard retrieves ZenHub Board
+	GetBoard() (*Board, error)
+	// GetEpics returns Epics defined in this repository
+	//
+	// Github associated issue are not initialized, neither in epics nor in issues
+	GetEpics() ([]*Epic, error)
+	// GetEpic returns a single Epic
+	//
+	// Associated issues are filtered to only those that are from the same repository
+	// Github associated issue are not initialized, neither in epics nor in issues
+	GetEpic(epicNumber int) (*Epic, error)
 }
 
 // Client manages communication with the ZenHub API.

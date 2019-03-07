@@ -16,6 +16,11 @@ type Sync struct {
 	ZenhubClient      zenhub.API
 	ReleaseNameRE     *regexp.Regexp
 	VersionNameRename string
+	DefaultIssueType  string
+	LabelsToIssueType []struct {
+		Label     string
+		IssueType string
+	}
 }
 
 // All synchronize every thing
@@ -26,5 +31,9 @@ func (s *Sync) All(ctx context.Context) error {
 		return err
 	}
 
-	return s.releases()
+	err = s.releases()
+	if err != nil {
+		return err
+	}
+	return s.issues(ctx)
 }

@@ -21,8 +21,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "zenhub-jira-sync",
-	Short: "Synchronize ZenHub/GitHub issues to JIRA",
+	Use:          "zenhub-jira-sync",
+	Short:        "Synchronize ZenHub/GitHub issues to JIRA",
+	SilenceUsage: true,
 	RunE: func(c *cobra.Command, args []string) error {
 		cfg := new(Config)
 
@@ -33,7 +34,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		for _, s := range cfg.Synchronizations {
-			err := syncRepository(cfg, s.GithubOwner, s.GithubRepository, s.JiraBoardID, s.ReleaseRenamer)
+			err := syncRepository(cfg, s.GithubOwner, s.GithubRepository, s.JiraBoardID, s.ReleaseRenamer, s.IssueLabelToType)
 			if err != nil {
 				return err
 			}
@@ -86,7 +87,7 @@ func createGithubClient(ctx context.Context, cfg *Config) *gh.Client {
 	return gh.NewClient(tc)
 }
 
-func createJiraCLient(cfg *Config) (*jiralib.Client, error) {
+func createJiraClient(cfg *Config) (*jiralib.Client, error) {
 	tp := jiralib.BasicAuthTransport{
 		Username: cfg.JiraAuthentication.User,
 		Password: cfg.JiraAuthentication.Password,
@@ -95,9 +96,19 @@ func createJiraCLient(cfg *Config) (*jiralib.Client, error) {
 	return jiraClient, errors.Wrapf(err, "failed to create jira client")
 }
 
-func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoardID int, releaseRenamer ReleaseRenamer) error {
+func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoardID int, releaseRenamer ReleaseRenamer, issueLabelToType *IssueLabelToType) error {
 	ctx := context.Background()
-	jiraClient, err := createJiraCLient(cfg)
+	jiraClient, err := createJiraClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	syncJiraClient := &jira.Client{
+		JiraClient: jiraClient,
+		BoardID:    jiraBoardID,
+		ProjectKey: cfg.JiraProjectKey,
+	}
+	err = syncJiraClient.Init()
 	if err != nil {
 		return err
 	}
@@ -108,11 +119,35 @@ func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoard
 			Owner:    githubOwner,
 			Repo:     githubRepository,
 		},
-		JiraClient: &jira.Client{
-			JiraClient: jiraClient,
-			BoardID:    jiraBoardID,
-			ProjectID:  cfg.JiraProject,
-		},
+		JiraClient: syncJiraClient,
+	}
+
+	if issueLabelToType == nil {
+		// If not found a synchronization level look at global level
+		issueLabelToType = cfg.IssueLabelToType
+		if issueLabelToType == nil {
+			// If no mapping use a default
+			issueLabelToType = &IssueLabelToType{
+				Default: "User story",
+			}
+		}
+	}
+
+	sync.DefaultIssueType = issueLabelToType.Default
+	sync.LabelsToIssueType = make([]struct {
+		Label     string
+		IssueType string
+	}, 0)
+	for _, ltt := range issueLabelToType.LabelsMapping {
+		for label, issueType := range ltt {
+			sync.LabelsToIssueType = append(sync.LabelsToIssueType, struct {
+				Label     string
+				IssueType string
+			}{
+				label,
+				issueType,
+			})
+		}
 	}
 
 	ghRepo, err := sync.GithubClient.GetRepository(ctx)

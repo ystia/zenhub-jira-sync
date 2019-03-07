@@ -8,7 +8,7 @@ import (
 	gh "github.com/google/go-github/v24/github"
 )
 
-// Get fetches a repository.
+// GetRepository fetches a repository.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/#get
 func (c *Client) GetRepository(ctx context.Context) (*gh.Repository, error) {

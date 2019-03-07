@@ -16,14 +16,14 @@ func (c *Client) GetProjectVersions() ([]*Version, error) {
 		Versions []*Version `json:"versions,omitempty" structs:"versions,omitempty"`
 	}
 
-	req, err := c.JiraClient.NewRequest("GET", fmt.Sprintf("/rest/api/2/project/%s", c.ProjectID), nil)
+	req, err := c.JiraClient.NewRequest("GET", fmt.Sprintf("/rest/api/2/project/%s", c.ProjectKey), nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get versions for Jira project %q", c.ProjectID)
+		return nil, errors.Wrapf(err, "failed to get versions for Jira project %q", c.ProjectKey)
 	}
 
 	_, err = c.JiraClient.Do(req, &p)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get versions for Jira project %q", c.ProjectID)
+		return nil, errors.Wrapf(err, "failed to get versions for Jira project %q", c.ProjectKey)
 	}
 
 	return p.Versions, nil

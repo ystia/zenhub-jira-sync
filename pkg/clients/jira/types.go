@@ -36,13 +36,24 @@ type API interface {
 
 	// GetProjectID
 	GetProjectID() (int, error)
-}
 
-// Client manages communication with the Jira API.
-type Client struct {
-	JiraClient *jiralib.Client
-	ProjectID  string
-	BoardID    int
+	// GetIssueFromGithubID retrieves a Jira Issue that have a 'GitHub ID' custom field matching the given github issue id.
+	//
+	// The returned issue may be nil if none was found.
+	GetIssueFromGithubID(ghIssueID int64) (*jiralib.Issue, error)
+
+	// UpdateVersion will update a given version.
+	//
+	// JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-api-3-version-id-put
+	UpdateIssue(issue *jiralib.Issue) (*jiralib.Issue, error)
+
+	// CreateIssue creates an issue or a sub-task from a JSON representation.
+	//
+	// JIRA API docs: https://docs.atlassian.com/jira/REST/latest/#api/2/issue-createIssues
+	CreateIssue(issueType, status, summary, description, epicKey string, sprint *int, githubID int64, githubNumber int, githubLabels []string, githubStatus string) (*jiralib.Issue, error)
+
+	// GetCustomFieldID returns a custom field ID based on its name. If not found an empty string is returned.
+	GetCustomFieldID(name string) string
 }
 
 // Version represents a Jira Version
@@ -50,3 +61,6 @@ type Version struct {
 	jiralib.Version
 	StartDate string `json:"startDate,omitempty"`
 }
+
+// dateFormat is the format used for the Last Issue Sync Update field
+const issueSyncDateFormat = "2006-01-02T15:04:05.0-0700"
