@@ -54,6 +54,12 @@ type API interface {
 
 	// GetCustomFieldID returns a custom field ID based on its name. If not found an empty string is returned.
 	GetCustomFieldID(name string) string
+
+	// MoveToBacklog moves a list of issues identified by there issue keys to the backlog.
+	// This operation is equivalent to remove future and active sprints from a given set of issues.
+	//
+	// JIRA API docs: https://docs.atlassian.com/jira-software/REST/7.0.4/#agile/1.0/backlog-moveIssuesToBacklog
+	MoveToBacklog(issuesKeys []string) error
 }
 
 // Version represents a Jira Version

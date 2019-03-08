@@ -2,8 +2,6 @@ package jira
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"time"
 
 	jiralib "github.com/andygrunwald/go-jira"
@@ -21,8 +19,9 @@ func (c *Client) GetProjectVersions() ([]*Version, error) {
 		return nil, errors.Wrapf(err, "failed to get versions for Jira project %q", c.ProjectKey)
 	}
 
-	_, err = c.JiraClient.Do(req, &p)
+	resp, err := c.JiraClient.Do(req, &p)
 	if err != nil {
+		err = jiralib.NewJiraError(resp, err)
 		return nil, errors.Wrapf(err, "failed to get versions for Jira project %q", c.ProjectKey)
 	}
 
@@ -65,11 +64,10 @@ func (c *Client) CreateVersion(name, description string, projectID int, released
 
 	resp, err := c.JiraClient.Do(req, version)
 	if err != nil {
-		defer resp.Body.Close()
-		b, _ := ioutil.ReadAll(resp.Body)
-		log.Printf("Jira Version creation error: %s", b)
+		err = jiralib.NewJiraError(resp, err)
+		return nil, errors.Wrapf(err, "failed to create version %q", name)
 	}
-	return version, errors.Wrap(err, "failed to create version")
+	return version, nil
 }
 
 // UpdateVersion will update a given version.
@@ -87,9 +85,8 @@ func (c *Client) UpdateVersion(version *Version) (*Version, error) {
 	}
 	resp, err := c.JiraClient.Do(req, version)
 	if err != nil {
-		defer resp.Body.Close()
-		b, _ := ioutil.ReadAll(resp.Body)
-		log.Printf("Jira Version update error: %s", b)
+		err = jiralib.NewJiraError(resp, err)
+		return nil, errors.Wrapf(err, "failed to update version %q", version.Name)
 	}
-	return version, errors.Wrapf(err, "failed to update sprint %q", version.Name)
+	return version, nil
 }

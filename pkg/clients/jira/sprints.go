@@ -47,8 +47,12 @@ func (c *Client) UpdateSprint(sprint *jiralib.Sprint) (*jiralib.Sprint, error) {
 	if err != nil {
 		return sprint, errors.Wrapf(err, "failed to update sprint %q", sprint.Name)
 	}
-	_, err = c.JiraClient.Do(req, sprint)
-	return sprint, errors.Wrapf(err, "failed to update sprint %q", sprint.Name)
+	resp, err := c.JiraClient.Do(req, sprint)
+	if err != nil {
+		err = jiralib.NewJiraError(resp, err)
+		return nil, errors.Wrapf(err, "failed to update sprint %q", sprint.Name)
+	}
+	return sprint, nil
 }
 
 // CreateSprint will create a given sprint.
@@ -75,6 +79,40 @@ func (c *Client) CreateSprint(name string, goal string, startDate, endDate *time
 	}
 
 	sprint := new(jiralib.Sprint)
-	_, err = c.JiraClient.Do(req, sprint)
-	return sprint, errors.Wrapf(err, "failed to create sprint %q", sprint.Name)
+	resp, err := c.JiraClient.Do(req, sprint)
+	if err != nil {
+		err = jiralib.NewJiraError(resp, err)
+		return nil, errors.Wrapf(err, "failed to create sprint %q", sprint.Name)
+	}
+	return sprint, nil
+}
+
+// MoveToBacklog moves a list of issues identified by there issue keys to the backlog.
+// This operation is equivalent to remove future and active sprints from a given set of issues.
+//
+// JIRA API docs: https://docs.atlassian.com/jira-software/REST/7.0.4/#agile/1.0/backlog-moveIssuesToBacklog
+func (c *Client) MoveToBacklog(issuesKeys []string) error {
+	// JIRA API support max 50 items
+	issuesLimit := 50
+	var batches [][]string
+	for issuesLimit < len(issuesKeys) {
+		issuesKeys, batches = issuesKeys[issuesLimit:], append(batches, issuesKeys[0:issuesLimit:issuesLimit])
+	}
+	batches = append(batches, issuesKeys)
+	for _, issues := range batches {
+		issueList := struct {
+			Issues []string `json:"issues,omitempty"`
+		}{Issues: issues}
+		req, err := c.JiraClient.NewRequest("POST", "/rest/agile/1.0/backlog/issue", issueList)
+		req.Header.Set("Accept", "application/json")
+		if err != nil {
+			return errors.Wrapf(err, "failed to move issues %v to backlog", issues)
+		}
+		resp, err := c.JiraClient.Do(req, nil)
+		if err != nil {
+			err = jiralib.NewJiraError(resp, err)
+			return errors.Wrapf(err, "failed to move issues %v to backlog", issues)
+		}
+	}
+	return nil
 }

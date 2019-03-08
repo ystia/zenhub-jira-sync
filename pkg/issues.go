@@ -79,18 +79,28 @@ func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey stri
 		return nil, err
 	}
 	if jiraIssue != nil {
-
-		if jiraIssue, changed := s.diffIssues(issue, jiraIssue, epicKey, sprintNamesToIDs); changed {
-			return s.JiraClient.UpdateIssue(jiraIssue)
+		jiraIssueUpdate, changed, moveToBacklog := s.diffIssues(issue, jiraIssue, epicKey, sprintNamesToIDs)
+		if changed {
+			jiraIssue, err = s.JiraClient.UpdateIssue(jiraIssueUpdate)
+			if err != nil {
+				return nil, err
+			}
 		}
-	} else {
-		return s.createJiraIssueFromZenHubIssue(issue, epicKey, sprintNamesToIDs)
+		if moveToBacklog {
+			err = s.JiraClient.MoveToBacklog([]string{jiraIssue.Key})
+			if err != nil {
+				return nil, err
+			}
+		}
+		return jiraIssue, nil
 	}
-	return jiraIssue, nil
+	return s.createJiraIssueFromZenHubIssue(issue, epicKey, sprintNamesToIDs)
+
 }
 
-func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, bool) {
-	updatedIssue := false
+func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, bool, bool) {
+	var updatedIssue bool
+	var moveToBacklog bool
 	resultIssue := &jiralib.Issue{
 		Key: jiraIssue.Key,
 		ID:  jiraIssue.ID,
@@ -125,8 +135,7 @@ func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicK
 		}
 	}
 	if zhIssue.Milestone == nil && sprintRef != nil {
-		// TODO(loicalbertin) move issue to backlog
-		// https://docs.atlassian.com/jira-software/REST/7.0.4/#agile/1.0/backlog-moveIssuesToBacklog
+		moveToBacklog = true
 	} else if zhIssue.Milestone != nil && sprintID != sprintNamesToIDs[zhIssue.Milestone.GetTitle()] {
 		updatedIssue = true
 		resultIssue.Fields.Unknowns[s.JiraClient.GetCustomFieldID(jira.CFNameSprint)] = sprintNamesToIDs[zhIssue.Milestone.GetTitle()]
@@ -137,7 +146,7 @@ func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicK
 		jiraIssue.Fields.Unknowns[s.JiraClient.GetCustomFieldID(jira.CFNameGitHubStatus)] = zhIssue.GetState()
 	}
 
-	return resultIssue, updatedIssue
+	return resultIssue, updatedIssue, moveToBacklog
 }
 
 func (s *Sync) createJiraIssueFromZenHubIssue(issue *zenhub.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, error) {
