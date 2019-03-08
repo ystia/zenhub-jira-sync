@@ -32,6 +32,14 @@ func (c *Client) GetIssueFromGithubID(ghIssueID int64) (*jiralib.Issue, error) {
 //
 // JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-api-3-issue-id-put
 func (c *Client) UpdateIssue(issue *jiralib.Issue) (*jiralib.Issue, error) {
+	if issue.Fields == nil {
+		issue.Fields = &jiralib.IssueFields{
+			Unknowns: make(map[string]interface{}),
+		}
+	} else if issue.Fields.Unknowns == nil {
+		issue.Fields.Unknowns = make(map[string]interface{})
+	}
+	issue.Fields.Unknowns[c.GetCustomFieldID(CFNameGitHubLastIssueSync)] = time.Now().Format(issueSyncDateFormat)
 	issue, _, err := c.JiraClient.Issue.Update(issue)
 	return issue, errors.Wrap(err, "failed to update issue")
 }
