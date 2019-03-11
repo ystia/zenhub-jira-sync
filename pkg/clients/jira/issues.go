@@ -96,13 +96,13 @@ func (c *Client) UpdateIssueEstimate(issueKeyOrID string, estimate float32) erro
 	estimation.Value = estimate
 	req, err := c.JiraClient.NewRequest("PUT", fmt.Sprintf("/rest/agile/1.0/issue/%s/estimation?boardId=%d", issueKeyOrID, c.BoardID), &estimation)
 	if err != nil {
-		return errors.Wrapf(err, "estimate issue %q", issueKeyOrID)
+		return errors.Wrapf(err, "failed to estimate issue %q", issueKeyOrID)
 	}
 
 	resp, err := c.JiraClient.Do(req, nil)
 	if err != nil {
 		err = jiralib.NewJiraError(resp, err)
-		return errors.Wrapf(err, "estimate issue %q", issueKeyOrID)
+		return errors.Wrapf(err, "failed to estimate issue %q", issueKeyOrID)
 	}
 	return nil
 }
@@ -112,7 +112,7 @@ func (c *Client) GetIssueEstimate(issueKeyOrID string) (float32, error) {
 
 	req, err := c.JiraClient.NewRequest("GET", fmt.Sprintf("/rest/agile/1.0/issue/%s/estimation?boardId=%d", issueKeyOrID, c.BoardID), nil)
 	if err != nil {
-		return 0, errors.Wrapf(err, "estimate issue %q", issueKeyOrID)
+		return 0, errors.Wrapf(err, "failed to get estimate for issue %q", issueKeyOrID)
 	}
 	var estimation struct {
 		Value float32 `json:"value,omitempty"`
@@ -120,7 +120,49 @@ func (c *Client) GetIssueEstimate(issueKeyOrID string) (float32, error) {
 	resp, err := c.JiraClient.Do(req, &estimation)
 	if err != nil {
 		err = jiralib.NewJiraError(resp, err)
-		return 0, errors.Wrapf(err, "estimate issue %q", issueKeyOrID)
+		return 0, errors.Wrapf(err, "failed to get estimate for issue %q", issueKeyOrID)
 	}
 	return estimation.Value, nil
+}
+
+// AddRemoteLinkToIssue adds a link to an issue
+//
+// JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-rest-api-3-issue-issueIdOrKey-remotelink-post
+func (c *Client) AddRemoteLinkToIssue(issueKeyOrID, globalID, title, url string) error {
+
+	remoteLink := RemoteLink{
+		GlobalID: globalID,
+		Object: RemoteLinkObject{
+			Title: title,
+			URL:   url,
+		},
+	}
+	req, err := c.JiraClient.NewRequest("POST", fmt.Sprintf("/rest/api/2/issue/%s/remotelink", issueKeyOrID), &remoteLink)
+	if err != nil {
+		return errors.Wrapf(err, "failed to add remote link for issue issue %q", issueKeyOrID)
+	}
+
+	resp, err := c.JiraClient.Do(req, nil)
+	if err != nil {
+		err = jiralib.NewJiraError(resp, err)
+		return errors.Wrapf(err, "failed to add remote link for issue issue %q", issueKeyOrID)
+	}
+	return nil
+}
+
+// GetIssueRemoteLinks get the list of remote links for a given issue
+//
+// JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-rest-api-3-issue-issueIdOrKey-remotelink-get
+func (c *Client) GetIssueRemoteLinks(issueKeyOrID string) ([]RemoteLink, error) {
+	req, err := c.JiraClient.NewRequest("GET", fmt.Sprintf("/rest/api/2/issue/%s/remotelink", issueKeyOrID), nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get remote links for issue issue %q", issueKeyOrID)
+	}
+	remoteLinks := make([]RemoteLink, 0)
+	resp, err := c.JiraClient.Do(req, &remoteLinks)
+	if err != nil {
+		err = jiralib.NewJiraError(resp, err)
+		return nil, errors.Wrapf(err, "failed to get remotes link for issue issue %q", issueKeyOrID)
+	}
+	return remoteLinks, nil
 }

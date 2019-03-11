@@ -70,6 +70,16 @@ type API interface {
 	//
 	// JIRA API docs: https://developer.atlassian.com/cloud/jira/software/rest/#api-rest-agile-1-0-issue-issueIdOrKey-estimation-get
 	GetIssueEstimate(issueKeyOrID string) (float32, error)
+
+	// AddRemoteLinkToIssue adds a link to an issue
+	//
+	// JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-rest-api-3-issue-issueIdOrKey-remotelink-post
+	AddRemoteLinkToIssue(issueKeyOrID, globalID, title, url string) error
+
+	// GetIssueRemoteLinks get the list of remote links for a given issue
+	//
+	// JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-rest-api-3-issue-issueIdOrKey-remotelink-get
+	GetIssueRemoteLinks(issueKeyOrID string) ([]RemoteLink, error)
 }
 
 // Version represents a Jira Version
@@ -80,3 +90,15 @@ type Version struct {
 
 // dateFormat is the format used for the Last Issue Sync Update field
 const issueSyncDateFormat = "2006-01-02T15:04:05.0-0700"
+
+// RemoteLink is an issue remote link
+type RemoteLink struct {
+	GlobalID string           `json:"global_id,omitempty"`
+	Object   RemoteLinkObject `json:"object,omitempty"`
+}
+
+// RemoteLinkObject is an issue remote link content
+type RemoteLinkObject struct {
+	Title string `json:"title,omitempty"`
+	URL   string `json:"url,omitempty"`
+}

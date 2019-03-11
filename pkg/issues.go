@@ -103,7 +103,9 @@ func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey stri
 				return nil, err
 			}
 		}
-		return jiraIssue, nil
+
+		err = s.checkContainsRemoteURL(jiraIssue, "Original GitHub Issue", issue.GetHTMLURL())
+		return jiraIssue, err
 	}
 	return s.createJiraIssueFromZenHubIssue(issue, epicKey, sprintNamesToIDs)
 
@@ -196,7 +198,12 @@ func (s *Sync) createJiraIssueFromZenHubIssue(issue *zenhub.Issue, epicKey strin
 	}
 	if issue.Estimate != nil && jira.IsIssueTypeEstimable(issueType) {
 		err = s.JiraClient.UpdateIssueEstimate(jiraIssue.ID, float32(issue.Estimate.Value))
+		if err != nil {
+			return jiraIssue, err
+		}
 	}
+
+	err = s.JiraClient.AddRemoteLinkToIssue(jiraIssue.ID, "", "Original GitHub Issue", issue.GetHTMLURL())
 	return jiraIssue, err
 }
 
@@ -215,4 +222,17 @@ func hasLabel(issue *zenhub.Issue, labelName string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Sync) checkContainsRemoteURL(jiraIssue *jiralib.Issue, title, url string) error {
+	links, err := s.JiraClient.GetIssueRemoteLinks(jiraIssue.Key)
+	if err != nil {
+		return err
+	}
+	for _, link := range links {
+		if link.Object.Title == title && link.Object.URL == url {
+			return nil
+		}
+	}
+	return s.JiraClient.AddRemoteLinkToIssue(jiraIssue.Key, "", title, url)
 }

@@ -12,6 +12,7 @@ Zenhub to JIRA issues synchronization
   * [X] Link issue to an epic (Unknown limitation is that ZenHub support epics belonging to another epic while JIRA doesn't support it)
   * [X] Add/Remove issue to a sprint
   * [X] Jira Issue type based on GitHub issue labels (customizable)
+  * [X] Add link to the original issue
   * [ ] Synchronize comments
   * [ ] Add components to an issue
   * [X] Issue estimates sync
