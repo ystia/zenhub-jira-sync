@@ -52,3 +52,15 @@ func (c *Client) initCustomFields() error {
 func (c *Client) GetCustomFieldID(name string) string {
 	return c.customFieldsIDs[name]
 }
+
+// IsIssueTypeEstimable checks if issue type support estimation through Story Points custom field
+//
+// Currently only "User story" & "Task" support estimate
+func IsIssueTypeEstimable(issueTypeName string) bool {
+	switch issueTypeName {
+	case "User story", "Task":
+		return true
+	default:
+		return false
+	}
+}

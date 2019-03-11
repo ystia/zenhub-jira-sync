@@ -59,9 +59,7 @@ func (c *Client) CreateIssue(issueType, status, summary, description, epicKey st
 			},
 			Summary:     summary,
 			Description: description,
-			Labels:      githubLabels,
 			Unknowns: map[string]interface{}{
-				c.customFieldsIDs[CFNameStatus]:              status,
 				c.customFieldsIDs[CFNameGitHubID]:            githubID,
 				c.customFieldsIDs[CFNameGitHubNumber]:        githubNumber,
 				c.customFieldsIDs[CFNameGitHubStatus]:        githubStatus,
@@ -88,4 +86,41 @@ func (c *Client) CreateIssue(issueType, status, summary, description, epicKey st
 		log.Printf("Jira Issue creation error: %s", b)
 	}
 	return issue, errors.Wrap(err, "failed to create issue")
+}
+
+// UpdateIssueEstimate estimate for the given issue key or ID
+func (c *Client) UpdateIssueEstimate(issueKeyOrID string, estimate float32) error {
+	var estimation struct {
+		Value float32 `json:"value,omitempty"`
+	}
+	estimation.Value = estimate
+	req, err := c.JiraClient.NewRequest("PUT", fmt.Sprintf("/rest/agile/1.0/issue/%s/estimation?boardId=%d", issueKeyOrID, c.BoardID), &estimation)
+	if err != nil {
+		return errors.Wrapf(err, "estimate issue %q", issueKeyOrID)
+	}
+
+	resp, err := c.JiraClient.Do(req, nil)
+	if err != nil {
+		err = jiralib.NewJiraError(resp, err)
+		return errors.Wrapf(err, "estimate issue %q", issueKeyOrID)
+	}
+	return nil
+}
+
+// GetIssueEstimate get the estimate for the given issue key or ID
+func (c *Client) GetIssueEstimate(issueKeyOrID string) (float32, error) {
+
+	req, err := c.JiraClient.NewRequest("GET", fmt.Sprintf("/rest/agile/1.0/issue/%s/estimation?boardId=%d", issueKeyOrID, c.BoardID), nil)
+	if err != nil {
+		return 0, errors.Wrapf(err, "estimate issue %q", issueKeyOrID)
+	}
+	var estimation struct {
+		Value float32 `json:"value,omitempty"`
+	}
+	resp, err := c.JiraClient.Do(req, &estimation)
+	if err != nil {
+		err = jiralib.NewJiraError(resp, err)
+		return 0, errors.Wrapf(err, "estimate issue %q", issueKeyOrID)
+	}
+	return estimation.Value, nil
 }

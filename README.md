@@ -14,7 +14,7 @@ Zenhub to JIRA issues synchronization
   * [X] Jira Issue type based on GitHub issue labels (customizable)
   * [ ] Synchronize comments
   * [ ] Add components to an issue
-  * [ ] Issue estimates sync
+  * [X] Issue estimates sync
   * [ ] Fix version sync
   * [ ] Transition issue jira status based on ZenHub pipelines
   * [ ] Issues ranking sync

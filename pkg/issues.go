@@ -79,7 +79,7 @@ func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey stri
 		return nil, err
 	}
 	if jiraIssue != nil {
-		jiraIssueUpdate, changed, moveToBacklog := s.diffIssues(issue, jiraIssue, epicKey, sprintNamesToIDs)
+		jiraIssueUpdate, changed, moveToBacklog, updateEstimate := s.diffIssues(issue, jiraIssue, epicKey, sprintNamesToIDs)
 		if changed {
 			jiraIssue, err = s.JiraClient.UpdateIssue(jiraIssueUpdate)
 			if err != nil {
@@ -92,13 +92,24 @@ func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey stri
 				return nil, err
 			}
 		}
+
+		if updateEstimate {
+			var estimate int
+			if issue.Estimate != nil {
+				estimate = issue.Estimate.Value
+			}
+			err = s.JiraClient.UpdateIssueEstimate(jiraIssue.Key, float32(estimate))
+			if err != nil {
+				return nil, err
+			}
+		}
 		return jiraIssue, nil
 	}
 	return s.createJiraIssueFromZenHubIssue(issue, epicKey, sprintNamesToIDs)
 
 }
 
-func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, bool, bool) {
+func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, bool, bool, bool) {
 	var updatedIssue bool
 	var moveToBacklog bool
 	resultIssue := &jiralib.Issue{
@@ -143,10 +154,25 @@ func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicK
 
 	if jiraIssue.Fields.Unknowns[s.JiraClient.GetCustomFieldID(jira.CFNameGitHubStatus)] != zhIssue.GetState() {
 		updatedIssue = true
-		jiraIssue.Fields.Unknowns[s.JiraClient.GetCustomFieldID(jira.CFNameGitHubStatus)] = zhIssue.GetState()
+		resultIssue.Fields.Unknowns[s.JiraClient.GetCustomFieldID(jira.CFNameGitHubStatus)] = zhIssue.GetState()
 	}
 
-	return resultIssue, updatedIssue, moveToBacklog
+	var updateEstimate bool
+	if jira.IsIssueTypeEstimable(jiraIssue.Fields.Type.Name) {
+		var estimate int
+		jiraSP, err := s.JiraClient.GetIssueEstimate(jiraIssue.ID)
+		if err == nil {
+			if zhIssue.Estimate != nil {
+				estimate = zhIssue.Estimate.Value
+			}
+			if jiraSP != float32(estimate) {
+				updateEstimate = true
+			}
+		} else {
+			log.Printf("failed to get issue estimate %v, do not update it", err)
+		}
+	}
+	return resultIssue, updatedIssue, moveToBacklog, updateEstimate
 }
 
 func (s *Sync) createJiraIssueFromZenHubIssue(issue *zenhub.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, error) {
@@ -163,7 +189,15 @@ func (s *Sync) createJiraIssueFromZenHubIssue(issue *zenhub.Issue, epicKey strin
 		sprint = new(int)
 		*sprint = sprintNamesToIDs[issue.GetMilestone().GetTitle()]
 	}
-	return s.JiraClient.CreateIssue(issueType, "open", issue.GetTitle(), issue.GetBody(), epicKey, sprint, issue.GetID(), issue.GetNumber(), getZHIssueLabels(issue), issue.GetState())
+
+	jiraIssue, err := s.JiraClient.CreateIssue(issueType, "open", issue.GetTitle(), issue.GetBody(), epicKey, sprint, issue.GetID(), issue.GetNumber(), getZHIssueLabels(issue), issue.GetState())
+	if err != nil {
+		return jiraIssue, err
+	}
+	if issue.Estimate != nil && jira.IsIssueTypeEstimable(issueType) {
+		err = s.JiraClient.UpdateIssueEstimate(jiraIssue.ID, float32(issue.Estimate.Value))
+	}
+	return jiraIssue, err
 }
 
 func getZHIssueLabels(issue *zenhub.Issue) []string {

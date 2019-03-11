@@ -26,21 +26,21 @@ func (s *Sync) diffMilestoneAndSprint(m *zenhub.Milestone, sprint *jiralib.Sprin
 	if m.StartDate != nil {
 		if sprint.StartDate == nil || !(*m.StartDate).Equal(*sprint.StartDate) {
 			updateSprint = true
-			*sprint.StartDate = *m.StartDate
+			sprint.StartDate = m.StartDate
 		}
 	}
 
 	if m.DueOn != nil {
 		if sprint.EndDate == nil || !(*m.DueOn).Equal(*sprint.EndDate) {
 			updateSprint = true
-			*sprint.EndDate = *m.DueOn
+			sprint.EndDate = m.DueOn
 		}
 	}
 
 	if m.ClosedAt != nil {
 		if sprint.CompleteDate == nil || !(*m.ClosedAt).Equal(*sprint.CompleteDate) {
 			updateSprint = true
-			*sprint.CompleteDate = *m.ClosedAt
+			sprint.CompleteDate = m.ClosedAt
 		}
 	}
 	return updateSprint

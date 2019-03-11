@@ -60,6 +60,16 @@ type API interface {
 	//
 	// JIRA API docs: https://docs.atlassian.com/jira-software/REST/7.0.4/#agile/1.0/backlog-moveIssuesToBacklog
 	MoveToBacklog(issuesKeys []string) error
+
+	// UpdateIssueEstimate estimate for the given issue key or ID
+	//
+	// JIRA API docs: https://developer.atlassian.com/cloud/jira/software/rest/#api-rest-agile-1-0-issue-issueIdOrKey-estimation-put
+	UpdateIssueEstimate(issueKeyOrID string, estimate float32) error
+
+	// GetIssueEstimate get the estimate for the given issue key or ID
+	//
+	// JIRA API docs: https://developer.atlassian.com/cloud/jira/software/rest/#api-rest-agile-1-0-issue-issueIdOrKey-estimation-get
+	GetIssueEstimate(issueKeyOrID string) (float32, error)
 }
 
 // Version represents a Jira Version
