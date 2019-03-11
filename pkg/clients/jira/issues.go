@@ -166,3 +166,21 @@ func (c *Client) GetIssueRemoteLinks(issueKeyOrID string) ([]RemoteLink, error) 
 	}
 	return remoteLinks, nil
 }
+
+// TransitionIssue execute transition identified by the given name to the issue
+func (c *Client) TransitionIssue(issueKeyOrID, transitionName string) error {
+
+	transitions, _, err := c.JiraClient.Issue.GetTransitions(issueKeyOrID)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get transitions for issue %q", issueKeyOrID)
+	}
+
+	for _, transition := range transitions {
+		if transition.Name == transitionName {
+			_, err = c.JiraClient.Issue.DoTransition(issueKeyOrID, transition.ID)
+			return errors.Wrapf(err, "failed to apply transition %q to issue %q", transition.Name, issueKeyOrID)
+		}
+	}
+
+	return errors.Errorf("transition %q not supported on issue %q", transitionName, issueKeyOrID)
+}

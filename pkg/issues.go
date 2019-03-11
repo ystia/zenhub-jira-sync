@@ -8,16 +8,16 @@ import (
 	"strconv"
 	"strings"
 
+	jiralib "github.com/andygrunwald/go-jira"
+	gh "github.com/google/go-github/v24/github"
+
 	"github.com/ystia/zenhub-jira-sync/pkg/clients/jira"
 	"github.com/ystia/zenhub-jira-sync/pkg/clients/zenhub"
-
-	jiralib "github.com/andygrunwald/go-jira"
 )
 
 var sprintIDRE = regexp.MustCompile(`id=(\d+)`)
 
 func (s *Sync) issues(ctx context.Context) error {
-
 	sprintNamesToIDs := make(map[string]int)
 
 	sprintList, err := s.JiraClient.ListSprints(ctx)
@@ -61,6 +61,37 @@ func (s *Sync) issues(ctx context.Context) error {
 			_, err = s.checkIssue(ctx, issue, epicKey, sprintNamesToIDs)
 			if err != nil {
 				return err
+			}
+		}
+	}
+	// Closed issues do not appear in ZH board
+	return s.checkClosedIssues(ctx)
+}
+
+func (s *Sync) checkClosedIssues(ctx context.Context) error {
+	log.Printf("Checking issues closed on GitHub")
+	closedIssues, err := s.GithubClient.ListIssues(ctx, &gh.IssueListByRepoOptions{
+		State: "closed",
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, issue := range closedIssues {
+		jiraIssue, err := s.JiraClient.GetIssueFromGithubID(issue.GetID())
+		if err != nil {
+			return err
+		}
+		if jiraIssue == nil {
+			continue
+		}
+		if jiraIssue.Fields.Status != nil && !(jiraIssue.Fields.Status.Name == "Closed" || jiraIssue.Fields.Status.Name == "Done") {
+			err = s.JiraClient.TransitionIssue(jiraIssue.Key, "Close Issue")
+			if err != nil {
+				err = s.JiraClient.TransitionIssue(jiraIssue.Key, "Done")
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

@@ -23,6 +23,11 @@ type API interface {
 	// GitHub API docs: https://developer.github.com/v3/issues/#get-a-single-issue
 	GetIssue(ctx context.Context, number int) (*gh.Issue, error)
 
+	// ListIssues lists the issues for the specified repository.
+	//
+	// GitHub API docs: https://developer.github.com/v3/issues/#list-issues-for-a-repository
+	ListIssues(ctx context.Context, opts *gh.IssueListByRepoOptions) ([]*gh.Issue, error)
+
 	// GetIssueFromRepoID returns a single issue from repository id.
 	//
 	// GitHub API docs: https://developer.github.com/v3/issues/#get-a-single-issue

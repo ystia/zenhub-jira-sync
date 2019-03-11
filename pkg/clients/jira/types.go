@@ -80,6 +80,9 @@ type API interface {
 	//
 	// JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-rest-api-3-issue-issueIdOrKey-remotelink-get
 	GetIssueRemoteLinks(issueKeyOrID string) ([]RemoteLink, error)
+
+	// TransitionIssue execute transition identified by the given name to the issue
+	TransitionIssue(issueKeyOrID, transitionName string) error
 }
 
 // Version represents a Jira Version
