@@ -21,6 +21,7 @@ type Sync struct {
 		Label     string
 		IssueType string
 	}
+	DefaultJiraComponents []string
 }
 
 // All synchronize every thing

@@ -34,7 +34,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		for _, s := range cfg.Synchronizations {
-			err := syncRepository(cfg, s.GithubOwner, s.GithubRepository, s.JiraBoardID, s.ReleaseRenamer, s.IssueLabelToType)
+			err := syncRepository(cfg, s)
 			if err != nil {
 				return err
 			}
@@ -96,7 +96,7 @@ func createJiraClient(cfg *Config) (*jiralib.Client, error) {
 	return jiraClient, errors.Wrapf(err, "failed to create jira client")
 }
 
-func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoardID int, releaseRenamer ReleaseRenamer, issueLabelToType *IssueLabelToType) error {
+func syncRepository(cfg *Config, s Synchronization) error {
 	ctx := context.Background()
 	jiraClient, err := createJiraClient(cfg)
 	if err != nil {
@@ -105,7 +105,7 @@ func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoard
 
 	syncJiraClient := &jira.Client{
 		JiraClient: jiraClient,
-		BoardID:    jiraBoardID,
+		BoardID:    s.JiraBoardID,
 		ProjectKey: cfg.JiraProjectKey,
 	}
 	err = syncJiraClient.Init()
@@ -116,29 +116,29 @@ func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoard
 	sync := &pkg.Sync{
 		GithubClient: &github.Client{
 			GHClient: createGithubClient(ctx, cfg),
-			Owner:    githubOwner,
-			Repo:     githubRepository,
+			Owner:    s.GithubOwner,
+			Repo:     s.GithubRepository,
 		},
 		JiraClient: syncJiraClient,
 	}
 
-	if issueLabelToType == nil {
+	if s.IssueLabelToType == nil {
 		// If not found a synchronization level look at global level
-		issueLabelToType = cfg.IssueLabelToType
-		if issueLabelToType == nil {
+		s.IssueLabelToType = cfg.IssueLabelToType
+		if s.IssueLabelToType == nil {
 			// If no mapping use a default
-			issueLabelToType = &IssueLabelToType{
+			s.IssueLabelToType = &IssueLabelToType{
 				Default: "User story",
 			}
 		}
 	}
 
-	sync.DefaultIssueType = issueLabelToType.Default
+	sync.DefaultIssueType = s.IssueLabelToType.Default
 	sync.LabelsToIssueType = make([]struct {
 		Label     string
 		IssueType string
 	}, 0)
-	for _, ltt := range issueLabelToType.LabelsMapping {
+	for _, ltt := range s.IssueLabelToType.LabelsMapping {
 		for label, issueType := range ltt {
 			sync.LabelsToIssueType = append(sync.LabelsToIssueType, struct {
 				Label     string
@@ -156,20 +156,36 @@ func syncRepository(cfg *Config, githubOwner, githubRepository string, jiraBoard
 	}
 	sync.ZenhubClient = zenhub.NewClient(cfg.ZenhubAPIToken, *ghRepo.ID)
 
-	if releaseRenamer.Source == "" {
-		releaseRenamer.Source = "^(.*)$"
+	if s.ReleaseRenamer.Source == "" {
+		s.ReleaseRenamer.Source = "^(.*)$"
 	}
 
-	if releaseRenamer.Target == "" {
-		releaseRenamer.Target = "${0}"
+	if s.ReleaseRenamer.Target == "" {
+		s.ReleaseRenamer.Target = "${0}"
 	}
-	sync.ReleaseNameRE, err = regexp.Compile(releaseRenamer.Source)
+	sync.ReleaseNameRE, err = regexp.Compile(s.ReleaseRenamer.Source)
 	if err != nil {
-		return errors.Wrapf(err, "failed to compile release regexp for repository %s/%s", githubOwner, githubRepository)
+		return errors.Wrapf(err, "failed to compile release regexp for repository %s/%s", s.GithubOwner, s.GithubRepository)
 	}
-	sync.VersionNameRename = releaseRenamer.Target
+	sync.VersionNameRename = s.ReleaseRenamer.Target
+
+	sync.DefaultJiraComponents = getSyncJiraComponents(cfg.DefaultJiraComponents, s.DefaultJiraComponents)
 
 	return sync.All(ctx)
+}
+
+func getSyncJiraComponents(globalComponents []string, repositoryComponents []string) []string {
+	// Note(loicalbertin): this is not very efficient but it's an easy way to remove duplicates
+	dedupMap := make(map[string]struct{}, len(globalComponents)+len(repositoryComponents))
+	repositoryComponents = append(repositoryComponents, globalComponents...)
+	for _, comp := range repositoryComponents {
+		dedupMap[comp] = struct{}{}
+	}
+	repositoryComponents = repositoryComponents[:0]
+	for comp := range dedupMap {
+		repositoryComponents = append(repositoryComponents, comp)
+	}
+	return repositoryComponents
 }
 
 // Execute runs the root command

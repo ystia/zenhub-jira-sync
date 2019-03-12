@@ -152,6 +152,12 @@ func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicK
 			Unknowns: map[string]interface{}{},
 		},
 	}
+
+	if s.checkDefaultComponentsOnIssue(jiraIssue) {
+		updatedIssue = true
+		resultIssue.Fields.Components = jiraIssue.Fields.Components
+	}
+
 	if zhIssue.GetTitle() != jiraIssue.Fields.Summary {
 		updatedIssue = true
 		resultIssue.Fields.Summary = zhIssue.GetTitle()
@@ -208,6 +214,20 @@ func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicK
 	return resultIssue, updatedIssue, moveToBacklog, updateEstimate
 }
 
+func (s *Sync) checkDefaultComponentsOnIssue(jiraIssue *jiralib.Issue) bool {
+	var updated bool
+	for _, defComp := range s.DefaultJiraComponents {
+		for _, comp := range jiraIssue.Fields.Components {
+			if comp.Name == defComp {
+				continue
+			}
+		}
+		updated = true
+		jiraIssue.Fields.Components = append(jiraIssue.Fields.Components, &jiralib.Component{Name: defComp})
+	}
+	return updated
+}
+
 func (s *Sync) createJiraIssueFromZenHubIssue(issue *zenhub.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, error) {
 
 	issueType := s.DefaultIssueType
@@ -223,7 +243,7 @@ func (s *Sync) createJiraIssueFromZenHubIssue(issue *zenhub.Issue, epicKey strin
 		*sprint = sprintNamesToIDs[issue.GetMilestone().GetTitle()]
 	}
 
-	jiraIssue, err := s.JiraClient.CreateIssue(issueType, "open", issue.GetTitle(), issue.GetBody(), epicKey, sprint, issue.GetID(), issue.GetNumber(), getZHIssueLabels(issue), issue.GetState())
+	jiraIssue, err := s.JiraClient.CreateIssue(issueType, issue.GetTitle(), issue.GetBody(), epicKey, s.DefaultJiraComponents, sprint, issue.GetID(), issue.GetNumber(), getZHIssueLabels(issue), issue.GetState())
 	if err != nil {
 		return jiraIssue, err
 	}

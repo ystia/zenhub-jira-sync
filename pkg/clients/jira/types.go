@@ -50,7 +50,7 @@ type API interface {
 	// CreateIssue creates an issue or a sub-task from a JSON representation.
 	//
 	// JIRA API docs: https://docs.atlassian.com/jira/REST/latest/#api/2/issue-createIssues
-	CreateIssue(issueType, status, summary, description, epicKey string, sprint *int, githubID int64, githubNumber int, githubLabels []string, githubStatus string) (*jiralib.Issue, error)
+	CreateIssue(issueType, summary, description, epicKey string, components []string, sprint *int, githubID int64, githubNumber int, githubLabels []string, githubStatus string) (*jiralib.Issue, error)
 
 	// GetCustomFieldID returns a custom field ID based on its name. If not found an empty string is returned.
 	GetCustomFieldID(name string) string

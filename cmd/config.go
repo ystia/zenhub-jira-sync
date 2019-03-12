@@ -6,22 +6,24 @@ import (
 
 // Config represents a ZenHub To Jira Configuration
 type Config struct {
-	Synchronizations   []Synchronization  `mapstructure:"synchronizations"`
-	JiraURI            string             `mapstructure:"jira_uri"`
-	JiraProjectKey     string             `mapstructure:"jira_project_key"`
-	JiraAuthentication JiraAuthentication `mapstructure:"jira_authentication"`
-	ZenhubAPIToken     string             `mapstructure:"zenhub_api_token"`
-	GithubAPIToken     string             `mapstructure:"github_api_token"`
-	IssueLabelToType   *IssueLabelToType  `mapstructure:"issues_label_to_type"`
+	Synchronizations      []Synchronization  `mapstructure:"synchronizations"`
+	JiraURI               string             `mapstructure:"jira_uri"`
+	JiraProjectKey        string             `mapstructure:"jira_project_key"`
+	JiraAuthentication    JiraAuthentication `mapstructure:"jira_authentication"`
+	ZenhubAPIToken        string             `mapstructure:"zenhub_api_token"`
+	GithubAPIToken        string             `mapstructure:"github_api_token"`
+	IssueLabelToType      *IssueLabelToType  `mapstructure:"issues_label_to_type"`
+	DefaultJiraComponents []string           `mapstructure:"default_jira_components"`
 }
 
 // Synchronization allows to link specific github repository to a Jira Board
 type Synchronization struct {
-	GithubOwner      string            `mapstructure:"github_owner"`
-	GithubRepository string            `mapstructure:"github_repository"`
-	JiraBoardID      int               `mapstructure:"jira_board_id"`
-	ReleaseRenamer   ReleaseRenamer    `mapstructure:"release_renamer"`
-	IssueLabelToType *IssueLabelToType `mapstructure:"issues_label_to_type"`
+	GithubOwner           string            `mapstructure:"github_owner"`
+	GithubRepository      string            `mapstructure:"github_repository"`
+	JiraBoardID           int               `mapstructure:"jira_board_id"`
+	ReleaseRenamer        ReleaseRenamer    `mapstructure:"release_renamer"`
+	IssueLabelToType      *IssueLabelToType `mapstructure:"issues_label_to_type"`
+	DefaultJiraComponents []string          `mapstructure:"default_jira_components"`
 }
 
 type ReleaseRenamer struct {

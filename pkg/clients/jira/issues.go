@@ -47,7 +47,7 @@ func (c *Client) UpdateIssue(issue *jiralib.Issue) (*jiralib.Issue, error) {
 // CreateIssue creates an issue or a sub-task from a JSON representation.
 //
 // JIRA API docs: https://docs.atlassian.com/jira/REST/latest/#api/2/issue-createIssues
-func (c *Client) CreateIssue(issueType, status, summary, description, epicKey string, sprint *int, githubID int64, githubNumber int, githubLabels []string, githubStatus string) (*jiralib.Issue, error) {
+func (c *Client) CreateIssue(issueType, summary, description, epicKey string, components []string, sprint *int, githubID int64, githubNumber int, githubLabels []string, githubStatus string) (*jiralib.Issue, error) {
 
 	issue := &jiralib.Issue{
 		Fields: &jiralib.IssueFields{
@@ -78,6 +78,14 @@ func (c *Client) CreateIssue(issueType, status, summary, description, epicKey st
 	if sprint != nil {
 		issue.Fields.Unknowns[c.customFieldsIDs[CFNameSprint]] = *sprint
 	}
+
+	jiraComponents := make([]*jiralib.Component, len(components))
+	for i, compName := range components {
+		jiraComponents[i] = &jiralib.Component{
+			Name: compName,
+		}
+	}
+	issue.Fields.Components = jiraComponents
 
 	issue, resp, err := c.JiraClient.Issue.Create(issue)
 	if err != nil && resp != nil {
