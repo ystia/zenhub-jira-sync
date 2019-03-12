@@ -217,13 +217,17 @@ func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicK
 func (s *Sync) checkDefaultComponentsOnIssue(jiraIssue *jiralib.Issue) bool {
 	var updated bool
 	for _, defComp := range s.DefaultJiraComponents {
+		var found bool
 		for _, comp := range jiraIssue.Fields.Components {
 			if comp.Name == defComp {
-				continue
+				found = true
+				break
 			}
 		}
-		updated = true
-		jiraIssue.Fields.Components = append(jiraIssue.Fields.Components, &jiralib.Component{Name: defComp})
+		if !found {
+			updated = true
+			jiraIssue.Fields.Components = append(jiraIssue.Fields.Components, &jiralib.Component{Name: defComp})
+		}
 	}
 	return updated
 }
