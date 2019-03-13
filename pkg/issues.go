@@ -31,6 +31,16 @@ func (s *Sync) issues(ctx context.Context) error {
 	epics, err := s.ZenhubClient.GetEpics()
 
 	for _, epic := range epics {
+		ghIssue, err := s.GithubClient.GetIssue(ctx, *epic.IssueNumber)
+		if err != nil {
+			return err
+		}
+		epic.Issue.Issue = ghIssue
+		if epic.GetState() == "closed" {
+			// Do not consider closed epics
+			continue
+		}
+
 		jiraEpic, err := s.checkIssue(ctx, epic.Issue, "", sprintNamesToIDs)
 		if err != nil {
 			return err
@@ -99,13 +109,15 @@ func (s *Sync) checkClosedIssues(ctx context.Context) error {
 }
 
 func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, error) {
-	ghIssue, err := s.GithubClient.GetIssue(ctx, *issue.IssueNumber)
-	if err != nil {
-		return nil, err
+	if issue.Issue == nil {
+		ghIssue, err := s.GithubClient.GetIssue(ctx, *issue.IssueNumber)
+		if err != nil {
+			return nil, err
+		}
+		issue.Issue = ghIssue
 	}
-	issue.Issue = ghIssue
 
-	jiraIssue, err := s.JiraClient.GetIssueFromGithubID(*ghIssue.ID)
+	jiraIssue, err := s.JiraClient.GetIssueFromGithubID(issue.GetID())
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +157,7 @@ func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey stri
 			return nil, err
 		}
 	}
-	err = s.compareComments(ctx, ghIssue, jiraIssue)
+	err = s.compareComments(ctx, issue.Issue, jiraIssue)
 	return jiraIssue, err
 }
 
