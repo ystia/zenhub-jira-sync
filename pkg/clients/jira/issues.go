@@ -2,8 +2,6 @@ package jira
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"strings"
 	"time"
 
@@ -17,6 +15,7 @@ import (
 // The returned issue may be nil if none was found.
 func (c *Client) GetIssueFromGithubID(ghIssueID int64) (*jiralib.Issue, error) {
 	issues, _, err := c.JiraClient.Issue.Search(fmt.Sprintf("project = '%s' AND 'GitHub ID' = %d", c.ProjectKey, ghIssueID), &jiralib.SearchOptions{
+		Fields:     []string{"*all"},
 		MaxResults: 1,
 	})
 	if err != nil {
@@ -88,12 +87,11 @@ func (c *Client) CreateIssue(issueType, summary, description, epicKey string, co
 	issue.Fields.Components = jiraComponents
 
 	issue, resp, err := c.JiraClient.Issue.Create(issue)
-	if err != nil && resp != nil {
-		defer resp.Body.Close()
-		b, _ := ioutil.ReadAll(resp.Body)
-		log.Printf("Jira Issue creation error: %s", b)
+	if err != nil {
+		err = jiralib.NewJiraError(resp, err)
+		return nil, errors.Wrap(err, "failed to create issue")
 	}
-	return issue, errors.Wrap(err, "failed to create issue")
+	return issue, nil
 }
 
 // UpdateIssueEstimate estimate for the given issue key or ID

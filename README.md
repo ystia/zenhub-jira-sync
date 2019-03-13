@@ -13,7 +13,7 @@ Zenhub to JIRA issues synchronization
   * [X] Add/Remove issue to a sprint
   * [X] Jira Issue type based on GitHub issue labels (customizable)
   * [X] Add link to the original issue
-  * [ ] Synchronize comments
+  * [X] Synchronize comments
   * [X] Add components to issues
   * [X] Issue estimates sync
   * [ ] Fix version sync

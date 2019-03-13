@@ -32,6 +32,12 @@ type API interface {
 	//
 	// GitHub API docs: https://developer.github.com/v3/issues/#get-a-single-issue
 	GetIssueFromRepoID(ctx context.Context, repoID int64, number int) (*gh.Issue, error)
+
+	// GetIssueComments gets all comments on the specified issue. Specifying an issue
+	// number of 0 will return all comments on all issues for the repository.
+	//
+	// GitHub API docs: https://developer.github.com/v3/issues/comments/#list-comments-on-an-issue
+	GetIssueComments(ctx context.Context, issueNumber int) ([]*gh.IssueComment, error)
 }
 
 // Client manages communication with the GitHub API.

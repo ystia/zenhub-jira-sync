@@ -83,6 +83,16 @@ type API interface {
 
 	// TransitionIssue execute transition identified by the given name to the issue
 	TransitionIssue(issueKeyOrID, transitionName string) error
+
+	// AddComment adds a new comment to issueID.
+	//
+	// JIRA API docs: https://docs.atlassian.com/jira/REST/latest/#api/2/issue-addComment
+	AddComment(issueKeyOrID, body string) (*jiralib.Comment, error)
+
+	// UpdateComment updates the body of a comment, identified by commentID, on the issueID.
+	//
+	// JIRA API docs: https://docs.atlassian.com/jira/REST/cloud/#api/2/issue/{issueIdOrKey}/comment-updateComment
+	UpdateComment(issueKeyOrID, commentID, body string) (*jiralib.Comment, error)
 }
 
 // Version represents a Jira Version

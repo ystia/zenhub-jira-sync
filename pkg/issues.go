@@ -136,10 +136,17 @@ func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey stri
 		}
 
 		err = s.checkContainsRemoteURL(jiraIssue, "Original GitHub Issue", issue.GetHTMLURL())
-		return jiraIssue, err
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		jiraIssue, err = s.createJiraIssueFromZenHubIssue(issue, epicKey, sprintNamesToIDs)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return s.createJiraIssueFromZenHubIssue(issue, epicKey, sprintNamesToIDs)
-
+	err = s.compareComments(ctx, ghIssue, jiraIssue)
+	return jiraIssue, err
 }
 
 func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, bool, bool, bool) {
