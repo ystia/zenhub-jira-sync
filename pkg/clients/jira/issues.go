@@ -38,9 +38,10 @@ func (c *Client) UpdateIssue(issue *jiralib.Issue) (*jiralib.Issue, error) {
 	} else if issue.Fields.Unknowns == nil {
 		issue.Fields.Unknowns = make(map[string]interface{})
 	}
+	issueKey := issue.Key
 	issue.Fields.Unknowns[c.GetCustomFieldID(CFNameGitHubLastIssueSync)] = time.Now().Format(issueSyncDateFormat)
 	issue, _, err := c.JiraClient.Issue.Update(issue)
-	return issue, errors.Wrap(err, "failed to update issue")
+	return issue, errors.Wrapf(err, "failed to update issue %q", issueKey)
 }
 
 // CreateIssue creates an issue or a sub-task from a JSON representation.
@@ -89,7 +90,7 @@ func (c *Client) CreateIssue(issueType, summary, description, epicKey string, co
 	issue, resp, err := c.JiraClient.Issue.Create(issue)
 	if err != nil {
 		err = jiralib.NewJiraError(resp, err)
-		return nil, errors.Wrap(err, "failed to create issue")
+		return nil, errors.Wrapf(err, "failed to create issue GH-%d", githubNumber)
 	}
 	return issue, nil
 }
