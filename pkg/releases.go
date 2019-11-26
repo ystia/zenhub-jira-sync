@@ -74,7 +74,7 @@ func diffReleaseAndVersion(release *zenhub.ReleaseReport, version *jira.Version)
 		}
 	}
 	if release.DesiredEndDate != nil {
-		ded := release.DesiredEndDate.Format("2006-01-02")
+		ded := release.DesiredEndDate.Format("2/Jan/2006")
 		if version.UserReleaseDate != ded {
 			updatedVersion = true
 			version.UserReleaseDate = ded
