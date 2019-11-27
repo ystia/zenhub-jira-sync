@@ -42,10 +42,15 @@ type API interface {
 	// The returned issue may be nil if none was found.
 	GetIssueFromGithubID(ghIssueID int64) (*jiralib.Issue, error)
 
-	// UpdateVersion will update a given version.
+	// UpdateIssue will update a given issue.
 	//
 	// JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-api-3-version-id-put
 	UpdateIssue(issue *jiralib.Issue) (*jiralib.Issue, error)
+
+	// UpdateIssueFixVersion will set the fixVersion to the given list of version ids.
+	//
+	// JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-api-3-version-id-put
+	UpdateIssueFixVersion(issueKeyOrID string, versionsIDs []string) error
 
 	// CreateIssue creates an issue or a sub-task from a JSON representation.
 	//

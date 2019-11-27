@@ -191,3 +191,47 @@ func (c *Client) TransitionIssue(issueKeyOrID, transitionName string) error {
 
 	return errors.Errorf("transition %q not supported on issue %q", transitionName, issueKeyOrID)
 }
+
+// UpdateIssueFixVersion will set the fixVersion to the given list of version ids.
+//
+// JIRA API docs: https://developer.atlassian.com/cloud/jira/platform/rest/v3/?utm_source=/cloud/jira/platform/rest/&utm_medium=302#api-api-3-version-id-put
+func (c *Client) UpdateIssueFixVersion(issueKeyOrID string, versionsIDs []string) error {
+
+	type setID struct {
+		ID string `json:"id"`
+	}
+	type setAction struct {
+		Set []setID `json:"set"`
+	}
+	type updateFixVersions struct {
+		FixVersions []setAction `json:"fixVersions"`
+	}
+	type reqBodyStruct struct {
+		Update updateFixVersions `json:"update"`
+	}
+	reqBody := reqBodyStruct{
+		Update: updateFixVersions{
+			FixVersions: []setAction{
+				setAction{
+					Set: make([]setID, len(versionsIDs)),
+				},
+			},
+		},
+	}
+	for i, vid := range versionsIDs {
+		reqBody.Update.FixVersions[0].Set[i] = setID{
+			ID: vid,
+		}
+	}
+
+	req, err := c.JiraClient.NewRequest("PUT", fmt.Sprintf("/rest/api/2/issue/%s", issueKeyOrID), &reqBody)
+	if err != nil {
+		return errors.Wrapf(err, "failed update FixVersions for issue issue %q", issueKeyOrID)
+	}
+	resp, err := c.JiraClient.Do(req, nil)
+	if err != nil {
+		err = jiralib.NewJiraError(resp, err)
+		return errors.Wrapf(err, "failed update FixVersions for issue issue %q", issueKeyOrID)
+	}
+	return nil
+}

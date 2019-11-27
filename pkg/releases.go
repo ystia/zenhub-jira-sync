@@ -7,23 +7,24 @@ import (
 	"github.com/ystia/zenhub-jira-sync/pkg/clients/zenhub"
 )
 
-func (s *Sync) releases() error {
+func (s *Sync) releases() ([]releasesTuple, error) {
 	projectID, err := s.JiraClient.GetProjectID()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	log.Print("Listing ZenHub Releases Reports")
 	zhReleases, err := s.ZenhubClient.GetReleasesReports()
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	versions, err := s.JiraClient.GetProjectVersions()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	relTuples := make([]releasesTuple, 0)
 	for _, release := range zhReleases {
 		rExists := false
 		if !s.ReleaseNameRE.MatchString(release.Title) {
@@ -37,20 +38,22 @@ func (s *Sync) releases() error {
 				if diffReleaseAndVersion(release, version) {
 					version, err = s.JiraClient.UpdateVersion(version)
 					if err != nil {
-						return err
+						return nil, err
 					}
 				}
+				relTuples = append(relTuples, releasesTuple{zhRelease: release, jiraVersion: version})
 			}
 		}
 		if !rExists && release.State == "open" {
-			_, err = s.JiraClient.CreateVersion(expectedVersionName, release.Description, projectID, release.State == "closed", false, release.StartDate, release.DesiredEndDate, release.ClosedAt)
+			version, err := s.JiraClient.CreateVersion(expectedVersionName, release.Description, projectID, release.State == "closed", false, release.StartDate, release.DesiredEndDate, release.ClosedAt)
 			if err != nil {
-				return err
+				return nil, err
 			}
+			relTuples = append(relTuples, releasesTuple{zhRelease: release, jiraVersion: version})
 		}
 	}
 
-	return nil
+	return relTuples, nil
 }
 
 func diffReleaseAndVersion(release *zenhub.ReleaseReport, version *jira.Version) bool {

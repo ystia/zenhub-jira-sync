@@ -32,9 +32,14 @@ func (s *Sync) All(ctx context.Context) error {
 		return err
 	}
 
-	err = s.releases()
+	relTuples, err := s.releases()
 	if err != nil {
 		return err
 	}
-	return s.issues(ctx)
+	return s.issues(ctx, relTuples)
+}
+
+type releasesTuple struct {
+	zhRelease   *zenhub.ReleaseReport
+	jiraVersion *jira.Version
 }

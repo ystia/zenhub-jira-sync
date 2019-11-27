@@ -25,17 +25,22 @@ type ReleaseReport struct {
 	State          string     `json:"state"`
 }
 
+// IssueID represents a ZenHub Issue identifier.
+type IssueID struct {
+	IssueNumber *int `json:"issue_number,omitempty"`
+	// When coming from an epic or a release report
+	RepoID *int64 `json:"repo_id,omitempty"`
+}
+
 // Issue represents a ZenHub Issue.
 // It supersede a GitHub Issue by adding a estimate, epic flag, position and pipeline
 type Issue struct {
-	*gh.Issue   `json:"-"`
-	IssueNumber *int               `json:"issue_number,omitempty"`
-	IsEpic      bool               `json:"is_epic,omitempty"`
-	Estimate    *Estimate          `json:"estimate,omitempty"`
-	Position    *int               `json:"position,omitempty"`
-	Pipeline    *IssueDataPipeline `json:"pipeline,omitempty"`
-	// When coming from an epic
-	RepoID *int64 `json:"repo_id,omitempty"`
+	IssueID
+	*gh.Issue `json:"-"`
+	IsEpic    bool               `json:"is_epic,omitempty"`
+	Estimate  *Estimate          `json:"estimate,omitempty"`
+	Position  *int               `json:"position,omitempty"`
+	Pipeline  *IssueDataPipeline `json:"pipeline,omitempty"`
 }
 
 // Estimate represents an Issue estimate

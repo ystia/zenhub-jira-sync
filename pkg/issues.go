@@ -17,12 +17,23 @@ import (
 
 var sprintIDRE = regexp.MustCompile(`id=(\d+)`)
 
-func (s *Sync) issues(ctx context.Context) error {
+func (s *Sync) issues(ctx context.Context, relTuples []releasesTuple) error {
 	sprintNamesToIDs := make(map[string]int)
-
 	sprintList, err := s.JiraClient.ListSprints(ctx)
 	for _, sprint := range sprintList {
 		sprintNamesToIDs[sprint.Name] = sprint.ID
+	}
+
+	issuesPerReleases := make(map[int][]string, 0)
+	for _, t := range relTuples {
+		issuesIDs, err := s.ZenhubClient.GetIssuesForReleaseReport(t.zhRelease.ID)
+		if err != nil {
+			return err
+		}
+		for _, i := range issuesIDs {
+			// append to a nil slice works
+			issuesPerReleases[*i.IssueNumber] = append(issuesPerReleases[*i.IssueNumber], t.jiraVersion.ID)
+		}
 	}
 
 	issuesToEpics := make(map[string]string)
@@ -41,7 +52,7 @@ func (s *Sync) issues(ctx context.Context) error {
 			continue
 		}
 
-		jiraEpic, err := s.checkIssue(ctx, epic.Issue, "", sprintNamesToIDs)
+		jiraEpic, err := s.checkIssue(ctx, epic.Issue, "", sprintNamesToIDs, issuesPerReleases)
 		if err != nil {
 			return err
 		}
@@ -68,7 +79,7 @@ func (s *Sync) issues(ctx context.Context) error {
 			}
 			issue.Pipeline = &zenhub.IssueDataPipeline{Name: pipeline.Name}
 			epicKey := issuesToEpics[fmt.Sprintf("%d/%d", *issue.RepoID, *issue.IssueNumber)]
-			_, err = s.checkIssue(ctx, issue, epicKey, sprintNamesToIDs)
+			_, err = s.checkIssue(ctx, issue, epicKey, sprintNamesToIDs, issuesPerReleases)
 			if err != nil {
 				return err
 			}
@@ -108,7 +119,7 @@ func (s *Sync) checkClosedIssues(ctx context.Context) error {
 	return nil
 }
 
-func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, error) {
+func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey string, sprintNamesToIDs map[string]int, issuesPerReleases map[int][]string) (*jiralib.Issue, error) {
 	if issue.Issue == nil {
 		ghIssue, err := s.GithubClient.GetIssue(ctx, *issue.IssueNumber)
 		if err != nil {
@@ -147,6 +158,10 @@ func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey stri
 			}
 		}
 
+		err = s.checkAndUpdateFixVersions(issue, jiraIssue, issuesPerReleases)
+		if err != nil {
+			return nil, err
+		}
 		err = s.checkContainsRemoteURL(jiraIssue, "Original GitHub Issue", issue.GetHTMLURL())
 		if err != nil {
 			return nil, err
@@ -159,6 +174,38 @@ func (s *Sync) checkIssue(ctx context.Context, issue *zenhub.Issue, epicKey stri
 	}
 	err = s.compareComments(ctx, issue.Issue, jiraIssue)
 	return jiraIssue, err
+}
+
+func (s *Sync) checkAndUpdateFixVersions(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, issuesPerReleases map[int][]string) error {
+	releases := issuesPerReleases[*zhIssue.IssueNumber]
+	if jiraIssue.Fields.Type.Name != "Bug" || zhIssue.GetState() != "Closed" {
+		var updateFixVersions bool
+		if len(releases) != len(jiraIssue.Fields.FixVersions) {
+			updateFixVersions = true
+		} else {
+			for _, v := range jiraIssue.Fields.FixVersions {
+				var found bool
+				for _, r := range releases {
+					if r == v.ID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					updateFixVersions = true
+					break
+				}
+			}
+		}
+		if updateFixVersions {
+			err := s.JiraClient.UpdateIssueFixVersion(jiraIssue.Key, releases)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+	return nil
 }
 
 func (s *Sync) diffIssues(zhIssue *zenhub.Issue, jiraIssue *jiralib.Issue, epicKey string, sprintNamesToIDs map[string]int) (*jiralib.Issue, bool, bool, bool) {

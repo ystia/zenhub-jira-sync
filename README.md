@@ -16,7 +16,7 @@ Zenhub to JIRA issues synchronization
   * [X] Synchronize comments
   * [X] Add components to issues
   * [X] Issue estimates sync
-  * [ ] Fix version sync
+  * [X] Fix version sync
   * [ ] Transition issue jira status based on ZenHub pipelines
   * [ ] Issues ranking sync
 * [ ] Document this
